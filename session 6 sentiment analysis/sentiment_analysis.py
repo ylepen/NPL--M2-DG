@@ -6,12 +6,11 @@ Created on Thu Mar 28 15:04:24 2024
 """
 
 import pandas as pd
-import numpy as np
 import nltk
-
+import matplotlib.pyplot as plt
 
 #%%
-df = pd.read_json('C:/Users/ylepen/OneDrive - Université Paris-Dauphine/COURS Dauphine/NLP/sentiment analysis/data/reviews_.json',lines=True)
+df = pd.read_json('C:/Users/ylepen/OneDrive - Université Paris-Dauphine/COURS Dauphine/NLP/session 7 sentiment analysis/data/reviews_.json',lines=True)
 
 #%%
 df.rename(columns={"reviewText":"text"},inplace=True)
@@ -134,5 +133,86 @@ for text in df['text']:
 df['Vader_Score']=Vader
 
 df.groupby('overall').agg({'Vader_Score':'mean'})
+#%%
+# sentiwordnet
+
+from nltk.corpus import wordnet as wn
+from nltk.corpus import sentiwordnet as swn
+
+nltk.download('sentiwordnet')
+nltk.download('wordnet')
+
+sentence = 'the painting is dark and dreadful'
+
+token_sentence = nltk.word_tokenize(sentence)
 
 #%% Comparison of the different lexicons
+df['sentiment']=0
+df.loc[df['overall']>=3,'sentiment']=1
+#df.loc[df['overall']<3,'sentiment']=0
+
+#%%
+df['sentiment2']=(df['overall']>=3).astype(int)
+
+#%% Bing Liu score
+df['Bing_Liu_Score'].min()
+df['Bing_Liu_predicted']=0
+df['Bing_Liu_predicted']=df['Bing_Liu_predicted'].mask(df['Bing_Liu_Score']>0,1)
+
+from sklearn.metrics import classification_report
+print(classification_report(df['sentiment'], df['Bing_Liu_predicted']))
+
+#%% Textblob score
+df['textblob_Score'].min()
+df['textblob_predicted']=0
+df['textblob_predicted']=df['textblob_predicted'].mask(df['textblob_Score']>0,1)# threshold a 0.1
+
+from sklearn.metrics import classification_report,  ConfusionMatrixDisplay
+print(classification_report(df['sentiment'], df['textblob_predicted']))
+ConfusionMatrixDisplay.from_predictions(df['sentiment'], df['textblob_predicted'])
+plt.show()
+
+#%%
+# Vader Score
+df['Vader_predicted']=0
+df['Vader_predicted']=df['Vader_predicted'].mask(df['Vader_Score']>0,1)# threshold a 0.1
+
+from sklearn.metrics import classification_report
+print(classification_report(df['sentiment'], df['Vader_predicted']))
+
+#%%
+# affin Score
+df['affin_predicted']=0
+df['affin_predicted']=df['affin_predicted'].mask(df['affin_Score']>0,1)# threshold a 0.1
+
+from sklearn.metrics import classification_report
+print(classification_report(df['sentiment'], df['affin_predicted']))
+
+#%%
+# Harvard IV-4 dictionary
+import pysentiment2 as ps
+hiv4 = ps.HIV4()
+text = 'The stock market is booming as the growth expectations are very optimistic'
+tokens = hiv4.tokenize(text)
+score = hiv4.get_score(tokens)
+print(score)
+
+#Loughran and McDonald
+lm=ps.LM()
+score_lm = lm.get_score(tokens)
+
+#%%
+
+df_tweet = pd.read_csv('C:/Users/ylepen/OneDrive - Université Paris-Dauphine/COURS Dauphine/NLP/session 7 sentiment analysis/data/tweets_remaining_09042020_16072020.csv',sep=';')
+
+df_tweet.info()
+
+df_tweet['token']=df_tweet['full_text'].apply(hiv4.tokenize)
+
+df_tweet['token'].sample(5)
+
+df_tweet['hiv4_score']=df_tweet['token'].apply(hiv4.get_score)
+
+df_tweet['hiv4_score'].sample(10)
+
+#%%
